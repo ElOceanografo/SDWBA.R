@@ -1,0 +1,11 @@
+Package: sdwba
+Title: Stochastic Distorted-wave Born Approximations for Acoustic Scattering
+Version: 0.0.0.9000
+Authors: person("Sam", "Urmy", email = "samuel.urmy@stonybrook.edu", role = c("aut"))
+Description: This package is used to calculate the acoustic backscattering coefficients and target strengths of fluid-like objects or animals with distorted cylindrical shapes. The stochastic distorted-wave Born approximation (SDWBA) is a relatively simple and accurate method for predicting the acoustic cross-section, and is useful for a variety of zooplankton and fish without swimbladders.
+Depends: R (>= 3.2.1)
+License: What license is it under?
+LazyData: true
+Suggests: testthat,
+    knitr
+VignetteBuilder: knitr
