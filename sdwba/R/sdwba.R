@@ -102,6 +102,28 @@ rotate.Scatterer <- function(scatterer, roll=0, tilt=0, yaw=0) {
   return(scatterer)
 }
 
+rescale <- function(scatterer, ...) UseMethod("rescale", scatterer)
+#' Resize a Scatterer
+#'
+#' This function stretches or resizes a scatterer.
+#' @param scatterer A Scatterer object
+#' @param scale Overall scaling factor to apply.  Each dimension of the scatterer
+#' will be multiplied by this number.  Defaults to 1.
+#' @param radius Factor by which to multiply the Scatterer's radii.  Defaults to 1.
+#' @param x,y,z Individual scaling factors to apply to the x, y, and z coordinates
+#' of the Scatterer's centerline.  All default to 1.
+#' @details All arguments to this function are applied; all default to 1 (i.e.,
+#' no stretching). You should only specify the ones you wish to change.
+#' @return A rescaled Scatterer object.
+rescale.Scatterer <- function(scatterer, scale=1, radius=1, x=1, y=1, z=1) {
+  scatterer$x <- scatterer$x * scale * x
+  scatterer$y <- scatterer$y * scale * y
+  scatterer$z <- scatterer$z * scale * z
+  scatterer$a <- scatterer$a * scale * radius
+  return(scatterer)
+}
+
+
 plot <- function(scatterer, ...) UseMethod("plot", scatterer)
 
 #' Visualize the shape of a Scatterer.
