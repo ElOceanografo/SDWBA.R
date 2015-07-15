@@ -7,12 +7,22 @@
 load.scatterer(filename, ...)
 }
 \arguments{
-\item{filename}{Path to the file}
+\item{filename}{Path to a CSV file. This file must have columns named "x", "y",
+"z", "a", "g", and "h" defining the scatterer's shape and material properties.}
 
 \item{...}{Additional arguments passed to read.csv}
+}
+\value{
+A Scatterer object.
 }
 \description{
 Reads in a scatterer from a CSV file with columns matching the arguments to
 Scatterer().
+}
+\details{
+This function is a wrapper around read.csv, allowing a Scatterer to
+be loaded directly from a CSV file.  The file must contain columns with the
+headers "x", "y", "z", "a", "g", and "h".  It may contain other columns as well,
+but these will be discarded.
 }
 

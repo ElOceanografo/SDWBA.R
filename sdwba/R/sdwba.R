@@ -55,8 +55,14 @@ Scatterer <- function(x, y, z, a, g, h) {
 #' @description
 #' Reads in a scatterer from a CSV file with columns matching the arguments to
 #' Scatterer().
-#' @param filename Path to the file
+#' @param filename Path to a CSV file. This file must have columns named "x", "y",
+#' "z", "a", "g", and "h" defining the scatterer's shape and material properties.
 #' @param ... Additional arguments passed to read.csv
+#' @details This function is a wrapper around read.csv, allowing a Scatterer to
+#' be loaded directly from a CSV file.  The file must contain columns with the
+#' headers "x", "y", "z", "a", "g", and "h".  It may contain other columns as well,
+#' but these will be discarded.
+#' @return A Scatterer object.
 load.scatterer <- function(filename, ...) {
   df <- read.csv(filename, ...)
   return(Scatterer(x=df$x, y=df$y, z=df$z, a=df$a, g=df$g, h=df$h))
