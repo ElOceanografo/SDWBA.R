@@ -102,7 +102,7 @@ k = \frac{2 \pi f}{c},
 where $f$ is the frequency (in Hz) and $c$ is the sound speed (in m/s).  For downward-directed sound, the usual case with a vessel-mounted echosounder, the wavenumber vector is pointed downwards, and is defined as $[0, 0, -k]$ (i.e., zero in the x and y directions). We'll define these constants in R as follows, assuming a sound speed in water of 1480 m/s and a frequency of 120 kHz:
 
 ```{r}
-sound.speed.water <- 1480
+sound.speed.water <- 1456
 # density.water <- 1027
 k.mag <- 120e3 * 2 * pi / sound.speed.water
 k <- c(0, 0, -k.mag)
@@ -143,7 +143,7 @@ sd(10 * log10(sigma.bs))
 freq.spec <- frequency.spectrum(krill, 12e3, 400e3, sound.speed.water, nfreq=120)
 plot(freq.spec$freq, freq.spec$TS, ty='l')
 
-tilt.spec <- tilt.spectrum(krill, -180, 180, freq=200e3, sound.speed=sound.speed.water, nangle=180)
+tilt.spec <- tilt.spectrum(krill, -180, 180, freq=120e3, sound.speed=sound.speed.water, nangle=180)
 plot(tilt.spec$angle, tilt.spec$TS, ty='l')
 ```
 
