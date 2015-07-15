@@ -1,0 +1,9 @@
+* using log directory ‘/home/sam/Projects/SDWBA.R/sdwba.Rcheck’
+* using R version 3.2.1 (2015-06-18)
+* using platform: x86_64-pc-linux-gnu (64-bit)
+* using session charset: UTF-8
+* checking for file ‘sdwba/DESCRIPTION’ ... ERROR
+Required fields missing or empty:
+  ‘Author’ ‘Maintainer’
+* DONE
+Status: 1 ERROR

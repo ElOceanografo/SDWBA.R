@@ -1,0 +1,155 @@
+---
+title: "Calculating Zooplankton TS with the SDWBA"
+author: "Sam Urmy"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Calculating Zooplankton TS with the SDWBA}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+## The SDWBA Package
+
+This package implements some commonly-used algorithms for predicting the acoustic cross-sections of zooplankton and other weakly-scattering objects.  These techniques have been used for some time, but well-documented, flexible, open-source set of routines for using them has not been publicly available.
+
+This vignette briefly reviews the assumptions and equations behind the (stochastic) distorted-wave Born approximation (the DWBA and SDWBA).  It then walks through an example, showing how to calculate frequency- and angle-dependent scattering from an Antarctic krill, *Euphausia superba*.
+
+### The distorted-wave Born approximation
+
+The distorted-wave Born approximation is a commonly used technique for calculating the acoustic backscatter from a weakly-scattering object (that is, one with density and sound speed that are close to those of the surrounding medium).  In its general form, the DWBA is a three-dimensional integral over the volume of the scatterer:
+
+\[
+f_{bs} = \frac{k_1^2}{4 \pi}\int \int \int_v (\gamma_\kappa - \gamma_\rho) e^{2 i \vec{k}_v \cdot \vec{r}_v} dv
+\]
+
+In this equation, $k_1$ and $k_v$ are the acoustic wavenumbers in the surrounding medium and in each differential volume element,  and $\gamma_\kappa$ and $\gamma_\rho$ are related to the material properties of the scattering medium.
+
+For many scattering organisms, including common crustacean zooplankton, this equation can be simplified to a line integral if the animal can be represented as a bent cylinder with a circular cross-section, whose radius and material properties may vary along its length:
+
+\[
+f_{bs} = \frac{k_1^2}{4 \pi} \int_\vec{r} (\gamma_\kappa - \gamma_\rho) e^{2 i \vec{k} \cdot \vec{r}} 
+\frac{J_1(2 k_2 a \cos \beta_{tilt})}{\cos \beta_{tilt}} |d\vec{r}|
+\]
+
+Here, $J_1$ is the Bessel function of the first kind and order one, and $\beta_{tilt}$ is the local angle between the incident wavenumber vector and the animal's centerline.
+
+In practice, the animal is discretized as a series of short, straight sections in which the radius and material properties vary linearly.  A component form function is calculated by integrating along each short section, and then these are summed to calculate the form function for the entire animal.
+
+\[
+f_{bs} = \sum_{j=1}^{N} f_{bs,j}
+\]
+
+The shape of the animal can be found by tracing its outline on a digitial photo, and its density and sound speed contrasts determined by lab measurements or taken from the literature.  With these quantities in hand, the backscattering form function can be predicted for any acoustic frequency or orientation.  The backscattering cross-section $\sigma_{bs}$ is defined as
+
+\[
+\sigma_{bs} = |f_{bs}|^2.
+\]
+
+The target strength (TS) is defined as $10 \log_10(\sigma_{bs})$.
+
+## Making the DWBA stochastic
+
+All of the equations above are deterministic.  However, scattering from animals in the wild inevitably includes some random variation: the animal's shape and body flexure will not exactly match the model's, and scattering processes contains some inherent stochasticity.  Demer and Conti (2003), faced with discrepancies between a deterministic DWBA model for Antarctic krill and $\sigma_{bs}$ measured from real animals, proposed a workaround: add a random phase offset to the form function from each body segment.  The total backscattering form function thus becomes
+
+\[
+f_{bs} = \sum_{j=1}^{N} f_{bs,j} e^{i \varphi_j},
+\]
+
+where $\varphi_j$ is the random phase component, assumed to be normally distributed around zero with a standard deviation $\sigma_{\varphi,j}$.  This new model, the stochastic DWBA (SDWBA) made predictions that better matched observations, especially at tilt angles away from broadside.
+
+
+## An example: Antarctic krill
+
+To start, first load the package.
+```{r}
+library(sdwba)
+```
+
+We will use the "generic krill" as defined in Conti and Demer (2006).  This is provided as a dataframe with the package, called `generic.krill.Conti2006`.  It contains the following data:
+
+```{r, echo=FALSE}
+knitr::kable(generic.krill.Conti2006, format="markdown")
+```
+
+The columns x, y, and z define the centerline of the krill's body.  The a column describes it radius at each point, and the g and h columns represent its density and sound-speed contrasts with the surrounding water.  These latter two are assumed constant in this case.
+
+To use the functions in the package, we first have to create a `Scatterer` object from this data frame. First, however, we need to make sure our units are all going to be consistent.  The measurements in this dataframe are in millimeters, so we will convert them to meters.
+
+```{r}
+generic.krill.m <- generic.krill.Conti2006
+generic.krill.m[c("x", "y", "z", "a")] <- generic.krill.m[c("x", "y", "z", "a")] * 1e-3
+krill <- with(generic.krill.m, Scatterer(x, y, z, a, g, h))
+```
+
+Alternatively, if you have a dataset in this format stored as a .csv file on disk, you can load it directly as a `Scatterer` using the `load.scatterer` function:
+
+```{r, eval=FALSE}
+scat <- load.scatterer("path/to/my_scatterer.csv")
+```
+
+Next, let's take a look at this krill's shape.  The package defines a `plot` method for `Scatterer` objects for easy visualization.
+
+```{r, fig.width=7}
+plot(krill)
+```
+
+Now that we have its shape definedm we are ready to calculate the backcattering from our generic krill.  The first step is to define the incident sound field.  This is done via a **wavenumber vector**.  This is a vector, pointing in the direction of propagation, whose magnitude is equal to the scalar wavenumber $k$.  The wavenumber is a spatial version of the frequency, telling us how many wavelengths fit in a unit distance.  It is defined as
+
+\[
+k = \frac{2 \pi f}{c},
+\]
+
+where $f$ is the frequency (in Hz) and $c$ is the sound speed (in m/s).  For downward-directed sound, the usual case with a vessel-mounted echosounder, the wavenumber vector is pointed downwards, and is defined as $[0, 0, -k]$ (i.e., zero in the x and y directions). We'll define these constants in R as follows, assuming a sound speed in water of 1480 m/s and a frequency of 120 kHz:
+
+```{r}
+sound.speed.water <- 1480
+# density.water <- 1027
+k.mag <- 120e3 * 2 * pi / sound.speed.water
+k <- c(0, 0, -k.mag)
+```
+
+Depending on the situation of interest, it may be conceptually simpler to tilt or rotate the scatterer rather than the incident wave field.  To make this easy, the package provides a function `rotate()` to change the orientation of a scatterer.  It accepts arguments for the roll, tilt, and yaw angles, all specified in degrees.
+
+```{r, fig.width=7, fig.height=7}
+krill.2 <- rotate(krill, tilt=45)
+plot(krill.2)
+```
+
+There are two functions used to calculate backscattering cross-section and target strength, `backscatter.xsection` and `target.strength`.  The latter is just a wrapper around the former.
+
+```{r, fig.width=7, fig.height=7}
+backscatter.xsection(krill, k)
+target.strength(krill, k)
+```
+
+Above, these functions use the deterministic DWBA.  They can be made stochastic by supplying a value for the optional argument `phase.sd`, which defaults to zero.  The example below shows how to calculate the TS from a stochastic krill, including the mean and standard deviations.
+
+```{r, fig.width=7, fig.height=5}
+n.rep <- 100
+sigma.bs <- rep(0, n.rep)
+
+for (i in 1:n.rep) {
+  sigma.bs[i] <- backscatter.xsection(krill.2, k, phase.sd=10)
+}
+hist(10 * log10(sigma.bs), 20, main="TS histogram")
+
+10 * log10(mean(sigma.bs))
+sd(10 * log10(sigma.bs))
+```
+
+
+
+```{r, fig.width=7, fig.height=5}
+freq.spec <- frequency.spectrum(krill, 12e3, 400e3, sound.speed.water, nfreq=120)
+plot(freq.spec$freq, freq.spec$TS, ty='l')
+
+tilt.spec <- tilt.spectrum(krill, -180, 180, freq=120e3, sound.speed=sound.speed.water, nangle=180)
+plot(tilt.spec$angle, tilt.spec$TS, ty='l')
+```
+
+```{r}
+# fs.cont <- frequency.spectrum(krill, 12e3, 400e3, sound.speed.water,
+#                          nfreq=120, method="continuous")
+# plot(TS ~ freq, fs, ty='l')
+# lines(TS ~ freq, fs.cont, col='blue')
+```
