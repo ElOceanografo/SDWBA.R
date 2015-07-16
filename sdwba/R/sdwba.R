@@ -190,7 +190,7 @@ form.function <- function(scatterer, k, phase.sd=0) {
       h <- s * (scatterer$h[j + 1] - scatterer$h[j]) + scatterer$h[j]
       g <- s * (scatterer$g[j + 1] - scatterer$g[j]) + scatterer$g[j]
       gamgam <- 1 / (g * h^2) + 1 / g - 2
-      k2 <- norm(k) / g
+      k2 <- norm(k) / h
 
       if (abs(betatilt) < 1e-10) {
         bessy <- k2 * a / h
@@ -218,6 +218,7 @@ form.function <- function(scatterer, k, phase.sd=0) {
 
 
 form.function.continuous <- function(scatterer, k, phase.sd=0) {
+  require(numDeriv)
   # Note: phase.sd has a different meaning here than in the
   dx <- diff(scatterer$x)
   dy <- diff(scatterer$y)
@@ -323,7 +324,7 @@ frequency.spectrum <- function(scatterer, freq.start, freq.stop, sound.speed,
   freqs <- seq(freq.start, freq.stop, length.out=nfreq)
   sigma.bs <- rep(0, length(freqs))
   for (i in 1:nfreq) {
-    k <- c(0, 0, 2 * pi * freqs[i] / sound.speed)
+    k <- c(0, 0, -2 * pi * freqs[i] / sound.speed)
     sigma.bs[i] <- backscatter.xsection(scatterer, k, ...)
   }
   return(list(freq=freqs, sigma.bs=sigma.bs, TS=10*log10(sigma.bs)))
@@ -342,7 +343,7 @@ tilt.spectrum <- function(scatterer, angle.start, angle.stop, freq, sound.speed,
   angles <- seq(angle.start, angle.stop, length.out=nangle) # degrees
   sigma.bs <- rep(0, length(angles))
   for (i in 1:length(angles)) {
-    k <- c(0, 0, 2 * pi * freq / sound.speed)
+    k <- c(0, 0, -2 * pi * freq / sound.speed)
     sigma.bs[i] <- backscatter.xsection(rotate(scatterer, tilt=angles[i]), k, ...)
   }
   return(list(angle=angles, sigma.bs=sigma.bs, TS=10 * log10(sigma.bs)))

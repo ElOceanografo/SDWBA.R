@@ -99,16 +99,15 @@ Now that we have its shape definedm we are ready to calculate the backcattering 
 k = \frac{2 \pi f}{c},
 \]
 
-where $f$ is the frequency (in Hz) and $c$ is the sound speed (in m/s).  For downward-directed sound, the usual case with a vessel-mounted echosounder, the wavenumber vector is pointed downwards, and is defined as $[0, 0, -k]$ (i.e., zero in the x and y directions). We'll define these constants in R as follows, assuming a sound speed in water of 1480 m/s and a frequency of 120 kHz:
+where $f$ is the frequency (in Hz) and $c$ is the sound speed (in m/s).  For downward-directed sound, the usual case with a vessel-mounted echosounder, the wavenumber vector is pointed downwards, and is defined as $[0, 0, -k]$ (i.e., zero in the x and y directions). We'll define these constants in R as follows, assuming a sound speed in water of 1456 m/s and a frequency of 120 kHz:
 
 ```{r}
 sound.speed.water <- 1456
-# density.water <- 1027
 k.mag <- 120e3 * 2 * pi / sound.speed.water
 k <- c(0, 0, -k.mag)
 ```
 
-Depending on the situation of interest, it may be conceptually simpler to tilt or rotate the scatterer rather than the incident wave field.  To make this easy, the package provides a function `rotate()` to change the orientation of a scatterer.  It accepts arguments for the roll, tilt, and yaw angles, all specified in degrees.
+Depending on the situation, it may be conceptually simpler to tilt or rotate the scatterer rather than the incident wave field.  To make this easy, the package provides a function `rotate()` to change the orientation of a scatterer.  It accepts arguments for the roll, tilt, and yaw angles, all specified in degrees.
 
 ```{r, fig.width=7, fig.height=7}
 krill.2 <- rotate(krill, tilt=45)
@@ -141,15 +140,16 @@ sd(10 * log10(sigma.bs))
 
 ```{r, fig.width=7, fig.height=5}
 freq.spec <- frequency.spectrum(krill, 12e3, 400e3, sound.speed.water, nfreq=120)
+freq.spec.cont <- frequency.spectrum(krill, 12e3, 400e3, sound.speed.water, nfreq=120,
+                                     method="continuous")
 plot(freq.spec$freq, freq.spec$TS, ty='l')
+lines(freq.spec.cont$freq, freq.spec.cont$TS, col='blue')
 
-tilt.spec <- tilt.spectrum(krill, -180, 180, freq=120e3, sound.speed=sound.speed.water, nangle=180)
+tilt.spec <- tilt.spectrum(krill, -180, 180, freq=120e3, sound.speed=sound.speed.water, 
+                           nangle=180)
+tilt.spec.cont <- tilt.spectrum(krill, -180, 180, freq=120e3, sound.speed=sound.speed.water,
+                                nangle=180, method="continuous")
 plot(tilt.spec$angle, tilt.spec$TS, ty='l')
+lines(tilt.spec.cont$angle, tilt.spec.cont$TS, col='blue')
 ```
 
-```{r}
-# fs.cont <- frequency.spectrum(krill, 12e3, 400e3, sound.speed.water,
-#                          nfreq=120, method="continuous")
-# plot(TS ~ freq, fs, ty='l')
-# lines(TS ~ freq, fs.cont, col='blue')
-```
