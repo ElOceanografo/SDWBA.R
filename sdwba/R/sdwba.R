@@ -129,6 +129,26 @@ rescale.Scatterer <- function(scatterer, scale=1, radius=1, x=1, y=1, z=1) {
   return(scatterer)
 }
 
+total.length <- function(scatterer, ...) UseMethod("total.length", scatterer)
+total.length.Scatterer <- function(scatterer) {
+  n <- nrow(scatterer)
+  return(norm(scatterer[1, c("x", "y", "z")] - scatterer[n, c("x", "y", "z")]))
+}
+
+resample <- function(scatterer, ...) UseMethod("resample", scatterer)
+
+resample.Scatterer <- function(scatterer, f, f0) {
+  N0 <- nrow(scatterer)
+  L0 <- total.length(scatterer)
+  N <- N0 * f / f0
+
+  interps <- interpolation.functions(scatterer)
+  attach(interps)
+
+  detach(interps)
+
+}
+
 
 plot <- function(scatterer, ...) UseMethod("plot", scatterer)
 
@@ -216,6 +236,27 @@ form.function <- function(scatterer, k, phase.sd=0) {
   return(f.bs)
 }
 
+interpolation.functions <- function(scatterer) {
+  require(numDeriv)
+  dx <- diff(scatterer$x)
+  dy <- diff(scatterer$y)
+  dz <- diff(scatterer$z)
+  ss <- c(0, cumsum(sqrt(dx^2 + dy^2 + dz^2)))
+
+  # Defining continuous interpolation functions
+  x_fun <- splinefun(ss, scatterer$x)
+  y_fun <- splinefun(ss, scatterer$y)
+  z_fun <- splinefun(ss, scatterer$z)
+  a_fun <- splinefun(ss, scatterer$a)
+  g_fun <- splinefun(ss, scatterer$g)
+  h_fun <- splinefun(ss, scatterer$h)
+  r_fun <- function(s) c(x_fun(s), y_fun(s), z_fun(s))
+  local_tangent <- function(s) jacobian(r_fun, s)
+
+  functions <- list(x_fun=x_fun, y_fun=y_fun, z_fun=z_fun, a_fun=a_fun, g_fun=g_fun,
+                    h_fun=h_fun, r_fun=r_fun, local_tangent=local_tangent)
+  return(functions)
+}
 
 form.function.continuous <- function(scatterer, k, phase.sd=0) {
   require(numDeriv)
@@ -234,13 +275,11 @@ form.function.continuous <- function(scatterer, k, phase.sd=0) {
   h_fun <- splinefun(ss, scatterer$h)
   r_fun <- function(s) c(x_fun(s), y_fun(s), z_fun(s))
   local_tangent <- function(s) jacobian(r_fun, s)
-  dot <- function(x, y) sum(x * y)
-  vecnorm <- function(x) sqrt(sum(x^2))
 
   # function to integrate along the length of the animal
   integrand <- function(s, k) {
     loc_tan <- local_tangent(s)
-    beta <- acos(dot(k, loc_tan) / (vecnorm(k) * vecnorm(loc_tan)))
+    beta <- acos(dot(k, loc_tan) / (norm(k) * norm(loc_tan)))
     beta <- abs(beta - pi/2)
     gamgam <- 1 / (g_fun(s) * h_fun(s)^2) + 1 / g_fun(s) - 2
     k2 <- norm(k) / g_fun(s)
@@ -307,6 +346,14 @@ target.strength <- function(scatterer, k, phase.sd=0,
                method=c("discrete", "continuous")) {
   sigma.bs <- backscatter.xsection(scatterer, k, phase.sd, method)
   return(10 * log10(sigma.bs))
+}
+
+backscatter.xsection.ensemble <- function(scatterer, k, phase.sd=0, n.sim=100) {
+  sigma <- rep(0, n.sim)
+  for (i in 1:n.sim) {
+     sigma[i] <- backscatter.xsection(scatterer, k, phase.sd)
+  }
+  return(list(mean=mean(sigma), sd=sd(sigma)))
 }
 
 #' Backscattering cross section as a function of frequency.
